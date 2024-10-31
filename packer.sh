@@ -43,6 +43,7 @@ main() {
 	target_pkg=$1
 
 	cd $SCRIPT_DIR
+	rm -f package.tar
 	pack_target $target_pkg
 
 	cd $SCRIPT_DIR
