@@ -1,5 +1,22 @@
 #! /usr/bin/env bash
 
+#!/usr/bin/env bash
+
+SOURCE=${BASH_SOURCE[0]}
+while [ -L "$SOURCE" ]; do
+	DIR=$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)
+	SOURCE=$(readlink "$SOURCE")
+	[[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE
+done
+DIR=$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)
+
+SCRIPT_DIR=$DIR
+
+cd "${SCRIPT_DIR}" || {
+	echo "Error: failed to change dir to ${SCRIPT_DIR}"
+	exit 100
+}
+
 pack_target() {
 	files=$(brew list ${target_pkg})
 	echo "=== pack ==="
@@ -16,7 +33,7 @@ pack_target_libs() {
 			echo "$dylibs"
 			tar --append -vf package.tar $dylibs
 			ret=$?
-			if [[ $ret -ne 0 ]];then
+			if [[ $ret -ne 0 ]]; then
 				echo "Error: Packge $dep failed"
 				exit 100
 			fi
@@ -24,32 +41,57 @@ pack_target_libs() {
 	done
 }
 
-target_pkg=$1
+main() {
+	target_pkg=$1
 
-pack_target $target_pkg
-pack_target_libs $target_pkg
+	cd $SCRIPT_DIR
+	pack_target $target_pkg
 
-mkdir -p /tmp/.package_on_host
-tar -xvf package.tar -C /tmp/.package_on_host
+	cd $SCRIPT_DIR
+	pack_target_libs $target_pkg
 
-cd /tmp/.package_on_host/
-mkdir -p ./bin
-cd ./bin || exit 100
-rm -rf ./*
-ln -s ../opt/homebrew/Cellar/*/*/bin/* ./
+	tmp_dir="/tmp/.package_on_host_$target_pkg"
 
+	mkdir -p $tmp_dir
+	# Extract the package.tar into tmp_dir
+	tar -xvf package.tar -C $tmp_dir
 
-cd /tmp/.package_on_host/
-mkdir -p ./lib
-cd ./lib
-ln -s ../opt/homebrew/Cellar/*/*/lib/* ./
+	{
+		cd $tmp_dir
+		mkdir -p ./bin
+		cd ./bin
+		rm -rf ./*
+		ln -s ../opt/homebrew/Cellar/*/*/bin/* ./
+	}
 
-cd /tmp/.package_on_host
+	{
+		cd $tmp_dir
+		mkdir -p ./lib
+		cd ./lib
+		rm -rf ./*
+		ln -s ../opt/homebrew/Cellar/*/*/lib/* ./
+	}
 
-echo "export DYLD_LIBRARY_PATH=./lib" >> ffmpeg.sh
-echo "export PATH=./bin" >> ffmpeg.sh
-echo "ffmpeg" >> ffmpeg.sh
-chmod +x ffmpeg.sh
+	{
+		# Make a caller script.
+		cd $SCRIPT_DIR
+		set -xe
+		cat ./caller.sh >>${target_pkg}.sh
+		echo "export DYLD_LIBRARY_PATH=./lib" >>${target_pkg}.sh
+		echo "export PATH=./bin" >>${target_pkg}.sh
+		echo "ffmpeg" >>${target_pkg}.sh
+		chmod +x ${target_pkg}.sh
+		mv ${target_pkg}.sh $tmp_dir
+		set +xe
+	}
 
-tar -Jcvf ${target_pkg}.tar.xz *
-mv ${target_pkg}.tar.xz /tmp/
+	{
+		set -xe
+		cd $tmp_dir
+		tar -Jcvf ${target_pkg}.tar.xz *
+		mv ${target_pkg}.tar.xz /tmp/
+		set +xe
+	}
+}
+
+main "$@"
