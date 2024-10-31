@@ -1,7 +1,5 @@
 #! /usr/bin/env bash
 
-#!/usr/bin/env bash
-
 SOURCE=${BASH_SOURCE[0]}
 while [ -L "$SOURCE" ]; do
 	DIR=$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)
@@ -55,6 +53,7 @@ main() {
 	mkdir -p $tmp_dir
 	# Extract the package.tar into tmp_dir
 	tar -xvf package.tar -C $tmp_dir
+	rm package.tar
 
 	{
 		cd $tmp_dir
@@ -79,7 +78,7 @@ main() {
 		cat ./caller.sh >>${target_pkg}.sh
 		echo "export DYLD_LIBRARY_PATH=./lib" >>${target_pkg}.sh
 		echo "export PATH=./bin" >>${target_pkg}.sh
-		echo "ffmpeg" >>${target_pkg}.sh
+		echo ${target_pkg} '$@' >>${target_pkg}.sh
 		chmod +x ${target_pkg}.sh
 		mv ${target_pkg}.sh $tmp_dir
 		set +xe
