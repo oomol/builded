@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+set -o pipefail
 
 SOURCE=${BASH_SOURCE[0]}
 while [ -L "$SOURCE" ]; do
@@ -16,10 +17,10 @@ cd "${SCRIPT_DIR}" || {
 }
 
 pack_target() {
-	files=$(brew list ${target_pkg})
 	echo "=== pack ==="
+	files=$(brew list ${target_pkg})
 	echo "$files"
-	tar --append -vf package.tar $files
+	tar --append -vf $target_pkg.tar $files
 }
 
 pack_target_libs() {
@@ -29,7 +30,7 @@ pack_target_libs() {
 		dylibs=$(brew list $dep | grep dylib)
 		if [[ -n $dylibs ]]; then
 			echo "$dylibs"
-			tar --append -vf package.tar $dylibs
+			tar --append -vf $target_pkg.tar $dylibs
 			ret=$?
 			if [[ $ret -ne 0 ]]; then
 				echo "Error: Packge $dep failed"
@@ -40,21 +41,44 @@ pack_target_libs() {
 }
 
 main() {
+	brew --version >/dev/null 2>&1 || {
+		echo "Brew not installed on system."
+		exit 100
+	}
+
 	target_pkg=$1
 
+	if [[ -z $target_pkg ]]; then
+		echo "Which pkg should pack ?"
+		exit 100
+	fi
+
 	cd $SCRIPT_DIR
-	rm -f package.tar
+	set -x
+	rm -rf $target_pkg.tar
+	set +x
+
 	pack_target $target_pkg
 
 	cd $SCRIPT_DIR
 	pack_target_libs $target_pkg
 
-	tmp_dir="/tmp/.package_on_host_$target_pkg"
+	tmp_dir="/tmp/.package_on_host_$target_pkg" && rm -rf $tmp_dir && mkdir -p $tmp_dir
 
-	mkdir -p $tmp_dir
-	# Extract the package.tar into tmp_dir
-	tar -xvf package.tar -C $tmp_dir
-	rm package.tar
+	{
+		set -xe
+		tar -xvf $target_pkg.tar -C $tmp_dir >/dev/null 2>&1
+		set +xe
+		echo "- Extract $target_pkg.tar into $tmp_dir done"
+
+	}
+
+	{
+		set -ex
+		rm $target_pkg.tar
+		set +ex
+		echo "- Delete $target_pkg.tar done"
+	}
 
 	{
 		cd $tmp_dir
@@ -62,6 +86,7 @@ main() {
 		cd ./bin
 		rm -rf ./*
 		ln -s ../opt/homebrew/Cellar/*/*/bin/* ./
+		echo "Relocate the bins done"
 	}
 
 	{
@@ -70,14 +95,15 @@ main() {
 		cd ./lib
 		rm -rf ./*
 		ln -s ../opt/homebrew/Cellar/*/*/lib/* ./
+		echo "Relocate the libs done"
 	}
 
 	{
 		set -xe
 		cd $tmp_dir
-		tar -Jcvf ${target_pkg}.tar.xz *
-		mv ${target_pkg}.tar.xz /tmp/
+		tar -Jcvf $SCRIPT_DIR/$target_pkg.tar * >/dev/null 2>&1
 		set +xe
+		echo "Package $target_pkg successful !"
 	}
 }
 
