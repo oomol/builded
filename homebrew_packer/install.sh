@@ -8,7 +8,12 @@ fi
 
 echo Install oomol ffmpeg package to "$dir"
 
-url="http://192.168.1.250:8081/ffmpeg.tar.xz"
+url="https://github.com/oomol/builded/releases/download/v1.1/ffmpeg_macos_arm64_ventura.tar.xz"
+
+if [[ -n $MY_CUSTOM_URL ]];then
+	url=$MY_CUSTOM_URL
+fi
+
 
 echo "Download ffmpeg....."
 set -ex
