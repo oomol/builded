@@ -33,10 +33,9 @@ cover_path() {
 				host_dir="$host_user_dir/oomol-storage"
 			fi
 			echo "host:$host_dir"
-			end_str=$(echo $end_str | sed "s#$vm_path#$host_dir#g")
+			end_str="$(echo $end_str | sed "s#$vm_path#$host_dir#g")"
 		fi
 	done
-	echo exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$end_str"
 }
 
 ################### In Linux VM ###################
@@ -44,22 +43,32 @@ called_in_guest() {
 	echo "- Called in Linux Guest"
 	ARGS="$@"
 
-	if [[ -z $ARGS ]];then
+	if [[ -z $ARGS ]]; then
 		echo "Error: args empty, what binary do you want call ?"
 		exit 100
 	fi
 
 	echo "ARGS: $ARGS"
-	echo exec_macos chmod +x "${SCRIPT_DIR}/$(basename "$0")"
-	echo exec_macos ${SCRIPT_DIR}/$(basename "$0") "$ARGS"
+	# First we need chmod +x to caller in MacOS HOST
+	exec_macos chmod +x "${SCRIPT_DIR}/$(basename "$0")"
+
+	# Then using caller.sh call the binary with args
+	cover_path "$@"
+	echo exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$end_str"
+	exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$end_str"
 }
 
 ################### In MACOS HOST ###################
 called_in_host() {
-	echo "- Called in MacOS Host"
+	if [[ -z "$*" ]]; then
+		echo "Error: args empty, what binary do you want call ?"
+		exit 100
+	fi
+
 	set -x
 	export DYLD_LIBRARY_PATH="${SCRIPT_DIR}/lib"
 	export PATH="$SCRIPT_DIR/bin:$PATH"
+	chmod -R +x $SCRIPT_DIR/opt/homebrew/Cellar/ffmpeg
 	"$@"
 }
 
@@ -71,7 +80,6 @@ main() {
 	elif [[ $OS == Darwin ]]; then
 		called_in_host "$@"
 	fi
-
 }
 
 main "$@"
