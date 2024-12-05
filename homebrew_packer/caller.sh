@@ -17,25 +17,8 @@ cd "$SCRIPT_DIR" || {
 }
 
 cover_path() {
-	args="$(echo "$@" | xargs -n1)"
-	end_str="$args"
-	for str in $args; do
-		vm_path=$(echo "$str" | grep -o '/[^[:space:]]*' | cut -d '/' -f 1,2,3 -s)
-		if [[ -n $vm_path ]]; then
-			echo "=== OOMOL DRIVER MAP ==="
-			echo "args_path:$vm_path"
-
-			host_dir=$(grep -m1 -B 1 "$vm_path" /root/.oomol-studio/app-config/oomol-storage/mount-point.json | grep hostPath | cut -d ':' -f2 | sed 's/"//g' | sed 's/,//g' | tr -d ' ')
-			# If the dir is /oomol-driver/oomol-storage, cover to /Users/<NAME>/oomol-storage
-			if [[ $vm_path == "/oomol-driver/oomol-storage" ]]; then
-				host_user_dir="$(pwd | cut -d '/' -f 1,2,3 -s)"
-				echo host_user_dir:$host_user_dir
-				host_dir="$host_user_dir/oomol-storage"
-			fi
-			echo "host:$host_dir"
-			end_str="$(echo $end_str | sed "s#$vm_path#$host_dir#g")"
-		fi
-	done
+	chmod +x ./tools/cover_path
+	./tools/cover_path "$@"
 }
 
 ################### In Linux VM ###################
@@ -50,12 +33,13 @@ called_in_guest() {
 
 	echo "ARGS: $ARGS"
 	# First we need chmod +x to caller in MacOS HOST
+	echo exec_macos chmod +x "${SCRIPT_DIR}/$(basename "$0")"
 	exec_macos chmod +x "${SCRIPT_DIR}/$(basename "$0")"
 
 	# Then using caller.sh call the binary with args
-	cover_path "$@"
-	echo exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$end_str"
-	exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$end_str"
+	# new_cmdline=$(cover_path "$@" | cut -d ':' -f2-)
+	echo exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$@"
+	exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$@"
 }
 
 ################### In MACOS HOST ###################
@@ -69,7 +53,10 @@ called_in_host() {
 	export DYLD_LIBRARY_PATH="${SCRIPT_DIR}/lib"
 	export PATH="$SCRIPT_DIR/bin:$PATH"
 	chmod -R +x $SCRIPT_DIR/opt/homebrew/Cellar/ffmpeg
-	"$@"
+	set +x
+	cmdline=$(cover_path "$@"| grep NEW_CMELINE| cut -d ':' -f2-)
+	set -x
+	$cmdline
 }
 
 main() {
