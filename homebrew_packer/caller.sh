@@ -23,7 +23,7 @@ cover_path() {
 		vm_path=$(echo "$str" | grep -o '/[^[:space:]]*' | cut -d '/' -f 1,2,3 -s)
 		if [[ -n $vm_path ]]; then
 			echo "=== OOMOL DRIVER MAP ==="
-			echo "container:$vm_path"
+			echo "args_path:$vm_path"
 
 			host_dir=$(grep -m1 -B 1 "$vm_path" /root/.oomol-studio/app-config/oomol-storage/mount-point.json | grep hostPath | cut -d ':' -f2 | sed 's/"//g' | sed 's/,//g' | tr -d ' ')
 			# If the dir is /oomol-driver/oomol-storage, cover to /Users/<NAME>/oomol-storage
