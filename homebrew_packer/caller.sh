@@ -66,7 +66,7 @@ called_in_host() {
 	chmod -R +x $SCRIPT_DIR/opt/homebrew/Cellar/ffmpeg
 
 	cmdline=$(cover_path "$@" | grep NEW_CMELINE | cut -d ':' -f2-)
-	$cmdline
+	bash -c "$cmdline"
 }
 
 get_source_dir
