@@ -8,7 +8,7 @@ fi
 
 echo Install oomol ffmpeg package to "$dir"
 
-tag_v="v1.3"
+tag_v="v1.4"
 url="https://github.com/oomol/builded/releases/download/$tag_v/ffmpeg_macos_arm64_ventura.tar.xz"
 
 if [[ -n $MY_CUSTOM_URL ]];then
