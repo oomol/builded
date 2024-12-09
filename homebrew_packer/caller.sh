@@ -21,15 +21,14 @@ get_source_dir() {
 
 cover_path() {
 	chmod +x $SCRIPT_DIR/tools/cover_path
-	./tools/cover_path "$@"
+	./tools/cover_path "$@" 2>>$SCRIPT_DIR/exec_log
 }
 
-
-# log() echo all message into stderr
-log(){
-	echo "$@" 1>&2
+# log() echo all message into $SCRIPT_DIR/exec_log
+# You can using tail -f $SCRIPT_DIR continue watch the logs comming
+log() {
+	echo "$@" >> $SCRIPT_DIR/exec_log
 }
-
 
 ################### In Linux VM ###################
 called_in_guest() {
@@ -44,7 +43,7 @@ called_in_guest() {
 	SH_CALLER="${SCRIPT_DIR}/caller.sh"
 	export SH_CALLER
 
-	if [[ ! -f /usr/bin/exec_macos ]];then
+	if [[ ! -f /usr/bin/exec_macos ]]; then
 		log "exec_macos not find in /usr/bin/"
 		exit 100
 	fi
@@ -60,17 +59,17 @@ called_in_host() {
 		log "Error: args empty, what binary do you want call ?"
 		exit 100
 	fi
-	
+
 	export DYLD_LIBRARY_PATH="${SCRIPT_DIR}/lib"
 	export PATH="$SCRIPT_DIR/bin:$PATH"
 	chmod -R +x $SCRIPT_DIR/opt/homebrew/Cellar/ffmpeg
 
 	cmdline=$(cover_path "$@" | grep NEW_CMELINE | cut -d ':' -f2-)
+	log "CONVERED FULL CMDLINE: $cmdline"
 	bash -c "$cmdline"
 }
 
 get_source_dir
-
 if [[ $(uname -s) == Linux ]]; then
 	# stdout and stderr all into stderr
 	called_in_guest "$@"
