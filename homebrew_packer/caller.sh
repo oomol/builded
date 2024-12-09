@@ -69,4 +69,4 @@ main() {
 	fi
 }
 
-main "$@"  2>&1 | tee -a /tmp/ffmpeg.log
+main "$@"  2>&1 | tee -a "$SCRIPT_DIR/exec.logs"
