@@ -17,50 +17,50 @@ cd "$SCRIPT_DIR" || {
 }
 
 cover_path() {
-	chmod +x ./tools/cover_path
+	chmod +x $SCRIPT_DIR/tools/cover_path
 	./tools/cover_path "$@"
 }
 
 ################### In Linux VM ###################
 called_in_guest() {
-	echo "- Called in Linux Guest"
-	ARGS="$@"
-
-	if [[ -z $ARGS ]]; then
-		echo "Error: args empty, what binary do you want call ?"
-		exit 100
-	fi
-
-	echo "ARGS: $ARGS"
-	# First we need chmod +x to caller in MacOS HOST
-	echo exec_macos chmod +x "${SCRIPT_DIR}/$(basename "$0")"
-	exec_macos chmod +x "${SCRIPT_DIR}/$(basename "$0")"
-
-	# Then using caller.sh call the binary with args
-	# new_cmdline=$(cover_path "$@" | cut -d ':' -f2-)
-	echo exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$@"
-	exec_macos "${SCRIPT_DIR}/$(basename "$0")" "$@"
-}
-
-################### In MACOS HOST ###################
-called_in_host() {
+	echo "==== Called in Linux Guest ===="
 	if [[ -z "$*" ]]; then
 		echo "Error: args empty, what binary do you want call ?"
 		exit 100
 	fi
 
-	set -x
+	echo "CALLING WITH ARGS: $*"
+	# First we need chmod +x to caller.sh in MacOS HOST
+	SH_CALLER="${SCRIPT_DIR}/caller.sh"
+	set -xe
+	exec_macos chmod +x "$SH_CALLER"
+	exec_macos "$SH_CALLER" "$@"
+	set +xe
+}
+
+################### In MACOS HOST ###################
+called_in_host() {
+	echo "==== Called in MacOS Host ===="
+	if [[ -z "$*" ]]; then
+		echo "Error: args empty, what binary do you want call ?"
+		exit 100
+	fi
+
+	set -ex
+
 	export DYLD_LIBRARY_PATH="${SCRIPT_DIR}/lib"
 	export PATH="$SCRIPT_DIR/bin:$PATH"
 	chmod -R +x $SCRIPT_DIR/opt/homebrew/Cellar/ffmpeg
-	set +x
+
+	set +ex
+
 	cmdline=$(cover_path "$@"| grep NEW_CMELINE| cut -d ':' -f2-)
-	set -x
+	set -xe
 	$cmdline
+	set +xe
 }
 
 main() {
-	echo "==== Guest Comand Proxy to MacOS Host ====="
 	OS=$(uname -s)
 	if [[ $OS == Linux ]]; then
 		called_in_guest "$@"
@@ -69,4 +69,4 @@ main() {
 	fi
 }
 
-main "$@"
+main "$@"  2>&1 | tee -a /tmp/ffmpeg.log
