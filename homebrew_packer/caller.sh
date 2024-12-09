@@ -66,7 +66,7 @@ called_in_host() {
 
 	cmdline=$(cover_path "$@" | grep NEW_CMELINE | cut -d ':' -f2-)
 	log "CONVERED FULL CMDLINE: $cmdline"
-	bash -c "$cmdline"
+	DYLD_LIBRARY_PATH="${SCRIPT_DIR}/lib" PATH="$SCRIPT_DIR/bin:$PATH" "$cmdline"
 }
 
 get_source_dir
