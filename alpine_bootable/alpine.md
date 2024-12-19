@@ -1,11 +1,30 @@
-Setup a bootable alpine disk using qemu and [alpine-virt-3.20.3-aarch64.iso](https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/aarch64/alpine-virt-3.20.3-aarch64.iso)
 
+# Setup bootable raw disk using qemu
+Setup a bootable alpine disk using qemu and [alpine-virt-3.20.3-aarch64.iso](https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/aarch64/alpine-virt-3.20.3-aarch64.iso) or [alpine-virt-3.21.0-x86_64.iso](https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-virt-3.21.0-x86_64.iso)
+
+
+## Download alpine-virt iso
+
+```
+$ wget https://dl-cdn.alpinelinux.org/alpine/v3.20/releases/aarch64/alpine-virt-3.20.3-aarch64.iso # For arm64
+$ wget https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-virt-3.21.0-x86_64.iso   # For x86_64
+```
+
+## Boot in UEFI
+
+### Boot ISO in UEFI
+```
+$ sudo apt install qemu-system-arm64 qemu-system-x86_64 
+```
+
+For ARM64 , create a VM-specific flash volume for storing NVRAM variables, which are necessary when booting EFI firmware, We also need to copy the ARM UEFI firmware into a bigger file, x86_64 no need to create `varstore.img & efi.img` :
 ```bash
 $ truncate -s 64m varstore.img
 $ truncate -s 64m efi.img
 dd if=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd of=efi.img conv=notrunc
 ```
 
+Booting `alpine-virt-3.20.3-aarch64.iso`, using `alpine_disk.img` as vdX disk, the alpine will installed into `alpine_disk.img`
 ```bash
 $ qemu-system-aarch64 \
 -nographic -enable-kvm -cpu max -smp 4 -m 8G \
@@ -17,13 +36,25 @@ $ qemu-system-aarch64 \
 -drive file=alpine_disk.img,format=raw,if=virtio
 ```
 
+Booting `alpine-virt-3.21.0-x86_64.iso`, using `alpine_disk.img` as vdX disk, the alpine will installed into `alpine_disk.img`
+```bash
+TERM=xterm-256color  \
+      taskset -c 4,5,6,7 ~/qemu_bins/lib/ld-linux-aarch64.so.1 \
+      --library-path ~/qemu_bins/lib  ~/qemu_bins/bin/qemu-system-x86_64  \
+      -nographic -cpu max -smp 4  -m 2G  \
+      -netdev "user,id=net0,restrict=n,hostfwd=tcp:127.0.0.1:10025-:22" \
+      -device "e1000,netdev=net0" -device virtio-balloon-pci,id=balloon0 \
+      -cdrom alpine-virt-3.21.0-x86_64.iso   \
+      -drive file=alpine_uefi_bootable-x86_64.img,format=raw,if=virtio \
+      -boot d
+```
+
 Setup alpine bootable disk:  https://wiki.alpinelinux.org/wiki/Installation.
 
 ```bash
-# DISABLE SWAP
-export SWAP_SIZE=0
-# BOOT PART SIZE 128MB
-export BOOT_SIZE=128
+export SWAP_SIZE=0 # DISABLE SWAP
+export BOOT_SIZE=128 # BOOT PART SIZE 128MB
+export BOOTLOADER=grub # Using grub as bootloader
 setup-alpine # scripts will asks few question
 ```
 
