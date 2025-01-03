@@ -80,9 +80,10 @@ setup_ffmpeg_for_macos_aarch64() {
 		bin_list="aviocat crypto_bench cws2fws enc_recon_frame_test enum_options ffescape ffeval ffhash ffmpeg ffplay ffprobe fourcc2pixfmt graph2dot ismindex pktdumper probetest qt-faststart scale_slice_test seek_print sidxindex trasher uncoded_frame venc_data_dump zmqsend"
 		for bin in $bin_list; do
 			echo "Generate ffmpeg caller in /usr/bin/$bin"
-
-			echo '#! /usr/bin/env bash' >"/usr/bin/$bin"
-			echo "exec_macos $install_dir/ffmpeg/caller $bin" '$@' >>"/usr/bin/$bin"
+			script_part_one="IyEgL3Vzci9iaW4vZW52IGJhc2gKY3AgL2Rldi9udWxsIC90bXAvLnRtcF9hcmdzCmZvciBhcmcgaW4gIiRAIjsgZG8KICBlY2hvIC1uIFwnXCIkYXJnXCJcJyAnICcgPj4gL3RtcC8udG1wX2FyZ3MKZG9uZQoKZmluYWxfYXJnPSQoY2F0IC90bXAvLnRtcF9hcmdzKQojZXZhbCAiJChlY2hvIGV4ZWNfbWFjb3MgL1VzZXJzL2RhbmhleG9uL2ZmbXBlZ19pbnN0YWxsX2Rpci9mZm1wZWcvY2FsbGVyIGZmbXBlZyAkZmluYWxfYXJnKSIK"
+			echo $script_part_one | base64 -d >"/usr/bin/$bin"
+			script_part_two="ZXZhbCAiJChlY2hvIGV4ZWNfbWFjb3MgSU5TVEFMTF9ESVIvZmZtcGVnL2NhbGxlciBQUk9KICRmaW5hbF9hcmcpIgo="
+			echo $script_part_two | base64 -d  |  sed "s#INSTALL_DIR#$install_dir#g" | sed "s/PROJ/$bin/g"  >>"/usr/bin/$bin"
 			chmod +x "/usr/bin/$bin"
 		done
 	} || {
