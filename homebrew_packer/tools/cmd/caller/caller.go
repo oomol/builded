@@ -27,24 +27,24 @@ type DataStruct struct {
 }
 
 const (
-	subtitlesPrefix           = "subtitles="
-	oomolStorage              = "/oomol-driver/oomol-storage" // Must not end with '/'
-	oomolStorageWithSubtitles = subtitlesPrefix + oomolStorage
+	oomolStorage  = "/oomol-driver/oomol-storage"
+	oomolSessions = "/oomol-driver/sessions"
 )
 
 func ContainerPath2HostPath(arg string, jsonData *DataStruct) string {
 	logrus.Infof("Process string: %q", arg)
+
 	// if prefix with  "subtitles=/oomol-driver/oomol-storage"
-	if strings.HasPrefix(arg, oomolStorage) {
+	if strings.Contains(arg, oomolSessions) {
 		homeDir, _ := os.UserHomeDir()
-		p := filepath.Join(homeDir, "oomol-storage")
-		_arg := strings.Replace(arg, oomolStorage, p, 1)
+		p := filepath.Join(homeDir, ".oomol-studio", "sessions")
+		_arg := strings.Replace(arg, oomolSessions, p, 1)
 		logrus.Infof("%q --> %q \n", arg, _arg)
 		return _arg
 	}
 
 	// if prefix with  "subtitles=/oomol-driver/oomol-storage"
-	if strings.HasPrefix(arg, oomolStorageWithSubtitles) {
+	if strings.Contains(arg, oomolStorage) {
 		homeDir, _ := os.UserHomeDir()
 		p := filepath.Join(homeDir, "oomol-storage")
 		_arg := strings.Replace(arg, oomolStorage, p, 1)
@@ -55,12 +55,7 @@ func ContainerPath2HostPath(arg string, jsonData *DataStruct) string {
 	if jsonData != nil {
 		for _, mountPoint := range jsonData.MountPoints {
 			// Check if the argument starts with the mountPoint.ContainerPath the replace
-			if strings.HasPrefix(arg, mountPoint.ContainerPath) {
-				_arg := strings.Replace(arg, mountPoint.ContainerPath, mountPoint.HostPath, 1)
-				logrus.Infof("%q --> %q \n", arg, _arg)
-				return _arg
-			}
-			if strings.HasPrefix(arg, subtitlesPrefix+mountPoint.ContainerPath) {
+			if strings.Contains(arg, mountPoint.ContainerPath) {
 				_arg := strings.Replace(arg, mountPoint.ContainerPath, mountPoint.HostPath, 1)
 				logrus.Infof("%q --> %q \n", arg, _arg)
 				return _arg
