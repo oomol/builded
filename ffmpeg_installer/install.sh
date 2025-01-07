@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-set -e
+set -o pipefail
 
 get_host_os() {
 	arch=$(uname -m)
@@ -30,8 +30,8 @@ get_host_os() {
 system_check() {
 	install_dir=$(mount | grep host-shared | xargs | cut -d ' ' -f3)
 	# You can set the INSTALL_DIR env to custom install dir
-	if [[ -n "$INSTALL_DIR" ]];then
-	      install_dir="$INSTALL_DIR"
+	if [[ -n "$INSTALL_DIR" ]]; then
+		install_dir="$INSTALL_DIR"
 	fi
 
 	if [[ -z "$install_dir" ]]; then
@@ -47,14 +47,14 @@ system_check() {
 	fi
 }
 
-chmod_on_host(){
-  local b="$1"
-  chmod +x /usr/bin/exec_macos && exec_macos chmod +x "${b}"
+chmod_on_host() {
+	local b="$1"
+	chmod +x /usr/bin/exec_macos && exec_macos chmod +x "${b}"
 }
 
-chmod_on_guest(){
-  local b="$1"
-  chmod +x "${b}"
+chmod_on_guest() {
+	local b="$1"
+	chmod +x "${b}"
 }
 
 # Setup ffmpeg binaries logic
@@ -83,7 +83,7 @@ setup_ffmpeg_for_macos_aarch64() {
 			script_part_one="IyEgL3Vzci9iaW4vZW52IGJhc2gKY3AgL2Rldi9udWxsIC90bXAvLnRtcF9hcmdzCmZvciBhcmcgaW4gIiRAIjsgZG8KICBlY2hvIC1uIFwnXCIkYXJnXCJcJyAnICcgPj4gL3RtcC8udG1wX2FyZ3MKZG9uZQoKZmluYWxfYXJnPSQoY2F0IC90bXAvLnRtcF9hcmdzKQojZXZhbCAiJChlY2hvIGV4ZWNfbWFjb3MgL1VzZXJzL2RhbmhleG9uL2ZmbXBlZ19pbnN0YWxsX2Rpci9mZm1wZWcvY2FsbGVyIGZmbXBlZyAkZmluYWxfYXJnKSIK"
 			echo $script_part_one | base64 -d >"/usr/bin/$bin"
 			script_part_two="ZXZhbCAiJChlY2hvIGV4ZWNfbWFjb3MgSU5TVEFMTF9ESVIvZmZtcGVnL2NhbGxlciBQUk9KICRmaW5hbF9hcmcpIgo="
-			echo $script_part_two | base64 -d  |  sed "s#INSTALL_DIR#$install_dir#g" | sed "s/PROJ/$bin/g"  >>"/usr/bin/$bin"
+			echo $script_part_two | base64 -d | sed "s#INSTALL_DIR#$install_dir#g" | sed "s/PROJ/$bin/g" >>"/usr/bin/$bin"
 			chmod +x "/usr/bin/$bin"
 		done
 	} || {
@@ -120,9 +120,9 @@ download_ffmpeg() {
 		fi
 
 		if [[ -z "$install_dir" ]]; then
-      echo "Error: env install_dir empty"
-      exit 100
-    fi
+			echo "Error: env install_dir empty"
+			exit 100
+		fi
 
 		wget "$url" --output-document /tmp/ffmpeg.tar.xz
 
@@ -142,13 +142,36 @@ download_ffmpeg() {
 
 # $MY_CUSTOM_URL Custom ffmpeg download url
 # $$INSTALL_DIR  Custom ffmpeg install dir
-main() {
+install_for_mac_arm64() {
 	# set vars platform && install_dir
 	system_check
 
 	echo "Download ffmpeg for $platform"
 	download_ffmpeg
 	setup_ffmpeg
+}
+
+install_for_wsl2_amd64() {
+	nvidia-smi || {
+		echo "nvidia-smi running failed, mybe you dont have nvidia GPU card on your system or host driver not installed"
+		exit 10
+	}
+	wget https://github.com/oomol/builded/releases/download/v1.7/ffmpeg-wsl2_x86_64.tar.xz --output-document=/tmp/ffmpeg-wsl2_x86_64.tar.xz
+	tar -xvf /tmp/ffmpeg-wsl2_x86_64.tar.xz  -C /tmp/
+	echo "Install ffmpeg"
+	cp /tmp/ffmpeg/ffmpeg /usr/bin/
+	cp /tmp/ffmpeg/ffprobe /usr/bin/
+	echo "Install ffmpeg done"
+}
+
+main() {
+	uname -a | grep --ignore-case microsoft-standard-WSL2
+	ret=$?
+	if [[ "$ret" -eq 0 ]]; then
+		install_for_wsl2_amd64
+	else
+		install_for_mac_arm64
+	fi
 }
 
 main
